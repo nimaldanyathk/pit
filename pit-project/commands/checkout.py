@@ -36,13 +36,22 @@ def run(args):
     elif len(targets) == 1 and _is_branch(repo_root, targets[0]):
         handle_branch_checkout(repo_root, targets[0])
         
+    # Case 3: checkout <tag>
+    elif len(targets) == 1 and _is_tag(repo_root, targets[0]):
+        handle_tag_checkout(repo_root, targets[0])
+        
     # Case 3: checkout <file>...
     else:
         handle_file_restore(repo_root, targets)
 
+
 def _is_branch(repo_root, name):
     branches = repository.get_all_branches(repo_root)
     return name in branches
+
+def _is_tag(repo_root, name):
+    tags = repository.get_all_tags(repo_root)
+    return name in tags
 
 def handle_create_and_checkout(repo_root, branch_name):
     # 1. Check if branch already exists
@@ -70,6 +79,46 @@ def handle_branch_checkout(repo_root, branch_name):
         return # Standard behavior usually returns status 0
         
     perform_checkout(repo_root, branch_name)
+
+
+
+def handle_tag_checkout(repo_root, tag_name):
+    # Similar to branch checkout, but results in detached HEAD
+    # 1. Validate clean
+    if not is_clean(repo_root):
+        print("error: Your local changes would be overwritten by checkout.", file=sys.stderr)
+        sys.exit(1)
+
+    # 2. Get commit
+    commit_hash = repository.get_tag_commit(repo_root, tag_name)
+    if not commit_hash:
+        print(f"fatal: tag '{tag_name}' not found.", file=sys.stderr)
+        sys.exit(1)
+
+    # 3. Update Workdir & Index
+    # Reuse perform_checkout logic?
+    # perform_checkout expects target_files and updating HEAD to ref.
+    # We need to update HEAD to raw hash.
+    # Let's adapt logic from perform_checkout or reuse parts.
+    
+    # Duplicate logic for now to ensure detached HEAD specific behavior
+    target_files = objects.get_commit_files(repo_root, commit_hash)
+    current_commit = repository.get_head_commit(repo_root)
+    current_files = objects.get_commit_files(repo_root, current_commit) if current_commit else {}
+    
+    update_working_directory(repo_root, current_files, target_files)
+    update_index(repo_root, target_files)
+    
+    # 4. Detached HEAD
+    head_path = os.path.join(repo_root, '.pit', 'HEAD')
+    with open(head_path, 'w') as f:
+        f.write(commit_hash)
+        
+    print(f"Note: checking out '{tag_name}'.")
+    print("\nYou are in 'detached HEAD' state. You can look around, make experimental")
+    print("changes and commit them, and you can discard any commits you make in this")
+    print("state without impacting any branches by switching back to a branch.")
+    print(f"\nHEAD is now at {commit_hash[:7]}")
 
 def perform_checkout(repo_root, target_branch):
     # 1. Validate clean state

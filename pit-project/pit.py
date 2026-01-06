@@ -2,7 +2,7 @@ import argparse
 from commands import (
     init, add, commit, log, status, config,
     branch, checkout, diff, merge, reset,
-    revert, clean,
+    revert, clean, stash, tag
     # remote, push, pull, clone
 )
 
@@ -115,6 +115,11 @@ def main():
     # clone_parser.add_argument("repository_url", help="The HTTPS URL of the repository to clone.")
     # clone_parser.add_argument("directory", nargs="?", help="The name of the directory to clone into.")
     # clone_parser.set_defaults(func=clone.run)
+
+    # Command: tag
+    tag_parser = subparsers.add_parser("tag", help="Create, list, delete or verify a tag object signed with GPG.")
+    tag_parser.add_argument("name", nargs="?", help="The name of the tag to create.")
+    tag_parser.set_defaults(func=tag.run)
 
     # Parse the arguments
     args = parser.parse_args()
